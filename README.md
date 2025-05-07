@@ -60,24 +60,24 @@ The modes of using kube-vip do change it's architecture. There are two things to
 
 1. where KubeVIP runs
    * Static Pod Mode (Control Plane HA)
-     ** Deployed as static pods on control plane nodes only
-     ** Managed directly by the kubelet on each control plane node, not by the Kubernetes API server
+       * Deployed as static pods on control plane nodes only
+       * Managed directly by the kubelet on each control plane node, not by the Kubernetes API server
    ![alt text](images/diagram2.png)
    * DaemonSet Mode (Service Load Balancing)
-     ** Deployed as a DaemonSet across worker nodes (can also include control plane nodes)
-     ** Managed by the Kubernetes API server like other workloads
-     ** Runs on all nodes or a selected subset using node selectors/affinities
+       * Deployed as a DaemonSet across worker nodes (can also include control plane nodes)
+       * Managed by the Kubernetes API server like other workloads
+       * Runs on all nodes or a selected subset using node selectors/affinities
 ![alt text](images/diagram3.png)
 2. how KubeVIP advertises the VIP to the network
    * ARP Mode
-   ** This node distributes the traffic further to other components (e.g., to other control plane nodes or pods).
-   ** From an external network point of view, there is only one IP address (VIP), assigned to one host.
-   ** In this mode, the leader must be ready to distribute/distribute traffic further.
+       * This node distributes the traffic further to other components (e.g., to other control plane nodes or pods).
+       * From an external network point of view, there is only one IP address (VIP), assigned to one host.
+       * In this mode, the leader must be ready to distribute/distribute traffic further.
    ![alt text](images/diagram4.png)
    * BGP mode
-   ** The external network sees the VIP advertised by multiple nodes, and routing decides which node the traffic will go to.
-   ** Traffic doesn't have to go through a single point - it can go to any node announcing VIP.
-   ** There is no “VIP Leader Node” as a central point - each node operates independently.
+       * The external network sees the VIP advertised by multiple nodes, and routing decides which node the traffic will go to.
+       * Traffic doesn't have to go through a single point - it can go to any node announcing VIP.
+       * There is no “VIP Leader Node” as a central point - each node operates independently.
 ![alt text](images/diagram5.png)
 
 This architecture enables KubeVIP to deliver robust high availability for both the Kubernetes control plane and application services without external dependencies, making it ideal for environments where cloud provider load balancing services are unavailable.
