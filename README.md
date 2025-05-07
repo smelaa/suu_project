@@ -48,20 +48,37 @@ KubeVIP tackles the high availability challenge through two main approaches:
 
 2. It supports multiple VIP advertisement methods (ARP, BGP, Layer 2) to accommodate different networking environments, making it adaptable to various infrastructure configurations.
 ### Overview of kube-vip functional components
-The diagram above shows how KubeVIP integrates with Kubernetes to provide high availability:
-
 * KubeVIP instances run on each control plane node, monitoring the health of the local Kubernetes components
 * A leader election mechanism ensures only one instance actively advertises the virtual IP at any time
 * When a node failure is detected, leadership transfers to another instance, which then takes ownership of the virtual IP
 * For service load balancing, the KubeVIP DaemonSet watches for services of type LoadBalancer and provisions virtual IPs accordingly
 
 ### Architecture 
-The recommended architecture for KubeVIP deployment involves:
+The modes of using kube-vip do change it's architecture. There are two things to concider:
+ * where KubeVIP runs
+ * how KubeVIP advertises the VIP to the network
 
-* Control plane high availability mode: KubeVIP static pods on each control plane node sharing a virtual IP for the Kubernetes API server
-* Service load balancing mode: KubeVIP DaemonSet across worker nodes to provide LoadBalancer functionality for application services
-*Optional BGP integration to announce virtual IPs to the broader network infrastructure
-*Leader election mechanism to ensure only one instance owns each virtual IP at any time
+1. where KubeVIP runs
+   * Static Pod Mode (Control Plane HA)
+     ** Deployed as static pods on control plane nodes only
+     ** Managed directly by the kubelet on each control plane node, not by the Kubernetes API server
+   ![alt text](images/diagram2.png)
+   * DaemonSet Mode (Service Load Balancing)
+     ** Deployed as a DaemonSet across worker nodes (can also include control plane nodes)
+     ** Managed by the Kubernetes API server like other workloads
+     ** Runs on all nodes or a selected subset using node selectors/affinities
+![alt text](images/diagram3.png)
+2. how KubeVIP advertises the VIP to the network
+   * ARP Mode
+   ** This node distributes the traffic further to other components (e.g., to other control plane nodes or pods).
+   ** From an external network point of view, there is only one IP address (VIP), assigned to one host.
+   ** In this mode, the leader must be ready to distribute/distribute traffic further.
+   ![alt text](images/diagram4.png)
+   * BGP mode
+   ** The external network sees the VIP advertised by multiple nodes, and routing decides which node the traffic will go to.
+   ** Traffic doesn't have to go through a single point - it can go to any node announcing VIP.
+   ** There is no “VIP Leader Node” as a central point - each node operates independently.
+![alt text](images/diagram5.png)
 
 This architecture enables KubeVIP to deliver robust high availability for both the Kubernetes control plane and application services without external dependencies, making it ideal for environments where cloud provider load balancing services are unavailable.
 ## 3. Case study concept description
