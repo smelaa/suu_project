@@ -87,13 +87,14 @@ This architecture enables KubeVIP to deliver robust high availability for both t
 KubeVIP Case Study
 This case study demonstrates the use of KubeVIP to enable load balancing in a Kubernetes cluster deployed in a non-cloud, bare-metal environment. The cluster hosts a lightweight microservices-based application designed to test and showcase KubeVIP’s functionality.
 
-The application consists of three identical microservices, each deployed as a single container within its own Pod. Each microservice exposes a simple HTTP endpoint that returns a static message, allowing for easy identification of which pod serves each request.
+The application consists of three identical microservices, each deployed as a single container within its own Pod. Each microservice exposes a simple HTTP endpoint that returns a static message - echo microservice, allowing for easy identification of which pod serves each request.
 
 KubeVIP is deployed in static mode with ARP enabled on a single control-plane node. It advertises a virtual IP (VIP) on the local network, acting as a stable, external-facing IP address for the service. Traffic directed to this VIP is automatically distributed across the three microservice Pods, demonstrating basic layer 4 load balancing functionality.
 
-This setup replicates a LoadBalancer-type service typically found in managed Kubernetes environments, without relying on external hardware or cloud infrastructure. It highlights KubeVIP's utility in on-premises or edge deployments, providing a practical and minimal solution for high availability, traffic distribution, and network resilience in small to medium-scale Kubernetes clusters
+![Case Study new drawio](https://github.com/user-attachments/assets/ff5a2ae2-b578-4b98-9689-94693d5146fc)
 
-### Schemat tutaj
+
+This setup replicates a LoadBalancer-type service typically found in managed Kubernetes environments, without relying on external hardware or cloud infrastructure. It highlights KubeVIP's utility in on-premises or edge deployments, providing a practical and minimal solution for high availability, traffic distribution, and network resilience in small to medium-scale Kubernetes clusters
 
 ### **Testing Scenarios**
 
