@@ -81,7 +81,38 @@ The modes of using kube-vip do change it's architecture. There are two things to
 ![alt text](images/diagram5.png)
 
 This architecture enables KubeVIP to deliver robust high availability for both the Kubernetes control plane and application services without external dependencies, making it ideal for environments where cloud provider load balancing services are unavailable.
+
 ## 3. Case study concept description
+
+KubeVIP Case Study
+This case study demonstrates the use of KubeVIP to enable load balancing in a Kubernetes cluster deployed in a non-cloud, bare-metal environment. The cluster hosts a lightweight microservices-based application designed to test and showcase KubeVIP’s functionality.
+
+The application consists of three identical microservices, each deployed as a single container within its own Pod. Each microservice exposes a simple HTTP endpoint that returns a static message, allowing for easy identification of which pod serves each request.
+
+KubeVIP is deployed in static mode with ARP enabled on a single control-plane node. It advertises a virtual IP (VIP) on the local network, acting as a stable, external-facing IP address for the service. Traffic directed to this VIP is automatically distributed across the three microservice Pods, demonstrating basic layer 4 load balancing functionality.
+
+This setup replicates a LoadBalancer-type service typically found in managed Kubernetes environments, without relying on external hardware or cloud infrastructure. It highlights KubeVIP's utility in on-premises or edge deployments, providing a practical and minimal solution for high availability, traffic distribution, and network resilience in small to medium-scale Kubernetes clusters
+
+### Schemat tutaj
+
+### **Testing Scenarios**
+
+To validate the effectiveness of KubeVIP as a load balancer in a Kubernetes environment, several test scenarios are executed against the deployed microservices. Each scenario is designed to evaluate a specific aspect of KubeVIP’s performance and reliability.
+
+#### 1. **Round-Robin Load Balancing Across Pods**
+
+A series of HTTP requests are sent to the virtual IP managed by KubeVIP using tools such as `curl`. The responses, which include pod-specific identifiers, confirme that requests were being distributed evenly across all three microservices. This demonstrates basic round-robin behavior and verified that KubeVIP correctly routed traffic among available pods.
+#### 2. **Unreachable Pod Handling**
+
+One of the pods is intentionally made unresponsive by killing the container or forcing a readiness probe failure. Subsequent requests to the VIP no longer routed traffic to the unhealthy pod, in order to check that Kubernetes' built-in health checks, in conjunction with KubeVIP’s service routing, effectively prevent traffic from reaching unavailable endpoints.
+
+#### 3. **Simulated Load Testing**
+
+Concurrent traffic is generated to the VIP using load testing tools such `ab` (Apache Benchmark). The system is tested for its ability to handle high request volumes while efficiently distributing traffic across all healthy pods.
+
+### **Monitoring and Observability**
+
+To ensure the Kubernetes cluster's performance, reliability, and health, monitoring and observability tools are integrated into the environment. Specifically, **Grafana** and **OpenTelemetry** (Otel) are utilized for real-time monitoring and gathering of application-level metrics, traces, and logs.
 
 ## 4. Solution architecture
 
