@@ -101,7 +101,9 @@ This case study demonstrates the use of KubeVIP to enable load balancing in a Ku
 
 The application consists of three identical microservices, each deployed as a single container within its own Pod. Each microservice exposes a simple HTTP endpoint that returns a static message - echo microservice, allowing for easy identification of which pod serves each request.
 
-KubeVIP is deployed in static mode with ARP enabled on a single control-plane node. It advertises a virtual IP (VIP) on the local network, acting as a stable, external-facing IP address for the service. Traffic directed to this VIP is automatically distributed across the three microservice Pods, demonstrating basic layer 4 load balancing functionality.
+ (Service Load Balancing)
+
+KubeVIP is deployed in DaemonSet mode allowing service load balancing. It advertises a virtual IP (VIP) on the local network, acting as a stable, external-facing IP address for the service. Traffic directed to this VIP is automatically distributed across the three microservice Pods, demonstrating basic layer 4 load balancing functionality.
 
 ![Case Study new drawio](https://github.com/user-attachments/assets/ff5a2ae2-b578-4b98-9689-94693d5146fc)
 
