@@ -9,17 +9,37 @@ Authors:
 Year: 2024/2025
 
 ## Contents list
-- [1. Introduction](#1-introduction)
-- [2. Theoretical background/technology stack](#2-theoretical-backgroundtechnology-stack)
-- [3. Case study concept description](#3-case-study-concept-description)
-- [4. Solution architecture](#4-solution-architecture)
-- [5. Environment configuration description](#5-environment-configuration-description)
-    - [5.1 Sample Kubernetes workload](#52-sample-kubernetes-workload)
-- [6. Installation method](#6-installation-method)
-    - [6.1 Prepare local Kubernetes cluster](#62-prepare-local-kubernetes-cluster)
-- [7. Demo deployment steps:](#7-demo-deployment-steps)
-- [8. Summary – conclusions](#8-summary-–-conclusions)
-- [9. References](#9-references)
+- [Project documentation](#project-documentation)
+  - [Contents list](#contents-list)
+  - [1. Introduction](#1-introduction)
+  - [2. Theoretical background/technology stack](#2-theoretical-backgroundtechnology-stack)
+    - [kube-vip - What is it?](#kube-vip---what-is-it)
+    - [What problem does kube-vip solves?](#what-problem-does-kube-vip-solves)
+    - [How does kube-vip work?](#how-does-kube-vip-work)
+    - [Overview of kube-vip functional components](#overview-of-kube-vip-functional-components)
+    - [Architecture](#architecture)
+  - [3. Case study concept description](#3-case-study-concept-description)
+    - [**Testing Scenarios**](#testing-scenarios)
+      - [1. **Round-Robin Load Balancing Across Pods**](#1-round-robin-load-balancing-across-pods)
+      - [2. **Unreachable Pod Handling**](#2-unreachable-pod-handling)
+      - [3. **Simulated Load Testing**](#3-simulated-load-testing)
+    - [**Monitoring and Observability**](#monitoring-and-observability)
+  - [4. Solution architecture](#4-solution-architecture)
+  - [5. Environment configuration description](#5-environment-configuration-description)
+  - [6. Installation method](#6-installation-method)
+      - [Prerequisites](#prerequisites)
+      - [Docker image building](#docker-image-building)
+      - [Cluster and app configuration](#cluster-and-app-configuration)
+      - [Observability deployment](#observability-deployment)
+  - [7.How to reproduce - step by step](#7how-to-reproduce---step-by-step)
+  - [8. Demo deployment steps](#8-demo-deployment-steps)
+    - [8.1. Configuration set-up](#81-configuration-set-up)
+    - [8.2. Data preparation](#82-data-preparation)
+    - [8.3. Execution procedure](#83-execution-procedure)
+    - [8.4. Results presentation](#84-results-presentation)
+  - [9. Using AI in the project](#9-using-ai-in-the-project)
+  - [10. Summary – conclusions](#10-summary--conclusions)
+  - [11. References](#11-references)
 
 ## 1. Introduction
 KubeVIP is a cloud-native high availability and load balancing solution built for Kubernetes environments, designed to provide resilient virtual IP addressing for both control plane components and service workloads across on-premises, edge, and multi-cloud deployments. By focusing on simplicity and platform independence, KubeVIP eliminates the need for external load balancers while ensuring critical Kubernetes components remain accessible even during node failures. It encompasses both control plane high availability and service load balancing capabilities, enabling organizations to build robust Kubernetes infrastructures without cloud provider dependencies. KubeVIP is platform-agnostic, operating effectively across bare metal, virtual machines, and various cloud environments. Its Kubernetes-native approach leverages either static pods or DaemonSets with support for multiple VIP advertisement methods including ARP, BGP, and Layer 2, enabling flexible network integration. KubeVIP aims to democratize high availability for Kubernetes clusters of all sizes, reducing operational complexity and costs associated with traditional load balancing solutions, ultimately enhancing resilience in both production and edge deployments.
@@ -109,12 +129,40 @@ To ensure the Kubernetes cluster's performance, reliability, and health, monitor
 
 ## 4. Solution architecture
 
+To setup Kubernetes cluster locally we've used kind - Kubernetes in Docker, which allowed us to easily setup multi-node cluster with Docker containers acting as nodes. KubeVIP has been used with a service of type LoadBalancer to balance the traffic between multiple pods with an application running inside and exposing simple HTTP endpoint. Monitoring and observability has been achieved with the use of OpenTelemetry (metrics and traces from the application), Prometheus and Grafana for visualization.
+
 ## 5. Environment configuration description
+
+We've set up kind cluster with 3 worker nodes and 1 control plane node in order to show KubeVIP's capability to balance the traffic between pods located on separate nodes. KubeVIP has been deployed in ARP mode as a DaemonSet on all worker nodes, the application has been packed into the Docker image and deployed to the cluster in 3 replicas (`deployment.yml` manifest file). After exposing the deployment as a service of type LoadBalancer, KubeVIP took care of assigning virtual IP and handling load balancing between the replicas.
 
 ## 6. Installation method
 
-### Prerequisites:
-...
+This instruction is not final yet, observability features are still to be added but it allows to present the working KubeVIP example.
+
+#### Prerequisites
+- Docker installed and running
+- kind installed
+- kubectl installed
+- helm installed
+
+#### Docker image building
+1. Build Docker image: `docker build -t echo-app ./app`
+2. Once your kind cluster is setup, load the image to the cluster: `kind load docker-image echo-app:latest`
+
+#### Cluster and app configuration
+1. Create kind cluster using the config file: `kind create cluster --config=kind-config.yml`
+2. Find addresses that can be used by KubeVIP: `docker network inspect kind -f '{{ range $i, $a := .IPAM.Config }}{{ println .Subnet }}{{ end }}'`
+3. Deploy KubeVIP cloud controller to the cluster: `kubectl apply -f https://raw.githubusercontent.com/kube-vip/kube-vip-cloud-provider/main/manifest/kube-vip-cloud-controller.yaml`
+4. Create config map with the address range that you want KubeVIP to use (must be inside the range from point 2): `kubectl create configmap --namespace kube-system kubevip --from-literal range-global=<your_address_range>`
+5. Apply KubeVIP RBAC settings: `kubectl apply -f https://kube-vip.io/manifests/rbac.yaml`
+6. Deploy KubeVIP as DaemonSet to the worker nodes (using `kube-vip.yml` manifest file): `kubectl apply -f kube-vip.yml`
+7. Create testing deployment: `kubectl apply -f deployment.yml`
+8. Expose the deployment: `kubectl expose deployment echo-app-deployment --port=80 --type=LoadBalancer --name=echo-app`
+9.  Test the app (not completed yet)
+
+#### Observability deployment
+1. Add Prometheus repo to helm: `helm repo add prometheus-community https://prometheus-community.github.io/helm-charts` and reload: `helm repo update`
+2. Deploy observability features to the cluster: `helm install kube-prometheus-stack --create-namespace --namespace monitoring prometheus-community/kube-prometheus-stack`
 
 ## 7.How to reproduce - step by step
 <!---Infrastructure as Code approach--->
