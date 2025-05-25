@@ -27,10 +27,10 @@ Year: 2024/2025
   - [4. Solution architecture](#4-solution-architecture)
   - [5. Environment configuration description](#5-environment-configuration-description)
   - [6. Installation method](#6-installation-method)
-      - [Prerequisites](#prerequisites)
-      - [Docker image building](#docker-image-building)
-      - [Cluster and app configuration](#cluster-and-app-configuration)
-      - [Observability deployment](#observability-deployment)
+      - [6.1. Prerequisites](#prerequisites)
+      - [6.2. Docker image building](#docker-image-building)
+      - [6.3. Cluster and app configuration](#cluster-and-app-configuration)
+      - [6.4. Observability deployment](#observability-deployment)
   - [7.How to reproduce - step by step](#7how-to-reproduce---step-by-step)
   - [8. Demo deployment steps](#8-demo-deployment-steps)
     - [8.1. Configuration set-up](#81-configuration-set-up)
@@ -141,17 +141,17 @@ We've set up kind cluster with 3 worker nodes and 1 control plane node in order 
 
 This instruction is not final yet, observability features are still to be added but it allows to present the working KubeVIP example.
 
-#### Prerequisites
+#### 6.1. Prerequisites
 - Docker installed and running
 - kind installed
 - kubectl installed
 - helm installed
 
-#### Docker image building
+#### 6.2. Docker image building
 1. Build Docker image: `docker build -t echo-app ./app`
-2. Once your kind cluster is setup, load the image to the cluster: `kind load docker-image echo-app:latest`
+2. Once your kind cluster is setup ([section 6.3](#6.3.-cluster-and-app-configuration)), load the image to the cluster: `kind load docker-image echo-app:latest`
 
-#### Cluster and app configuration
+#### 6.3. Cluster and app configuration
 1. Create kind cluster using the config file: `kind create cluster --config=kind-config.yml`
 2. Find addresses that can be used by KubeVIP: `docker network inspect kind -f '{{ range $i, $a := .IPAM.Config }}{{ println .Subnet }}{{ end }}'`
 3. Deploy KubeVIP cloud controller to the cluster: `kubectl apply -f https://raw.githubusercontent.com/kube-vip/kube-vip-cloud-provider/main/manifest/kube-vip-cloud-controller.yaml`
@@ -160,11 +160,11 @@ This instruction is not final yet, observability features are still to be added 
 6. Deploy KubeVIP as DaemonSet to the worker nodes (using `kube-vip.yml` manifest file): `kubectl apply -f kube-vip.yml`
 7. Create testing deployment: `kubectl apply -f deployment.yml`
 8. Expose the deployment: `kubectl expose deployment echo-app-deployment --port=80 --type=LoadBalancer --name=echo-app`
-9.  Test the app (not completed yet)
+9.  Test the app by sending HTTP requests to the assigned VIP. (not completed yet)
 
-#### Observability deployment
+#### 6.4. Observability deployment
 1. Add Prometheus repo to helm: `helm repo add prometheus-community https://prometheus-community.github.io/helm-charts` and reload: `helm repo update`
-2. Deploy observability features to the cluster: `helm install kube-prometheus-stack --create-namespace --namespace monitoring prometheus-community/kube-prometheus-stack`
+2. Deploy observability features to the cluster: `helm install kube-prometheus-stack --create-namespace --namespace monitoring -f values.yml prometheus-community/kube-prometheus-stack`
 
 ## 7.How to reproduce - step by step
 <!---Infrastructure as Code approach--->
