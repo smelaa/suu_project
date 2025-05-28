@@ -27,15 +27,20 @@ Year: 2024/2025
   - [4. Solution architecture](#4-solution-architecture)
   - [5. Environment configuration description](#5-environment-configuration-description)
   - [6. Installation method](#6-installation-method)
-      - [6.1. Prerequisites](#prerequisites)
-      - [6.2. Docker image building](#docker-image-building)
-      - [6.3. Cluster and app configuration](#cluster-and-app-configuration)
-      - [6.4. Observability deployment](#observability-deployment)
+    - [6.1. Prerequisites](#prerequisites)
+    - [6.2. Docker image building](#docker-image-building)
+    - [6.3. Cluster and KubeVIP configuration](#cluster-and-kubevip-configuration)
+    - [6.4. Cluster observability deployment](#cluster-observability-deployment)
+    - [6.5. Telemetry setup](#telemetry-setup)
   - [7.How to reproduce - step by step](#7how-to-reproduce---step-by-step)
   - [8. Demo deployment steps](#8-demo-deployment-steps)
     - [8.1. Configuration set-up](#81-configuration-set-up)
+      - [App deployment](#app-deployment)
     - [8.2. Data preparation](#82-data-preparation)
-    - [8.3. Execution procedure](#83-execution-procedure)
+    - [8.3. Execution procedure and observability features access](#83-execution-procedure-and-observability-features-access)
+      - [Accessing Grafana](#accessing-grafana)
+      - [Accessing Jaeger](#accessing-jaeger)
+      - [Simple app testing](#simple-app-testing)
     - [8.4. Results presentation](#84-results-presentation)
   - [9. Using AI in the project](#9-using-ai-in-the-project)
   - [10. Summary – conclusions](#10-summary--conclusions)
@@ -139,40 +144,63 @@ We've set up kind cluster with 3 worker nodes and 1 control plane node in order 
 
 ## 6. Installation method
 
-This instruction is not final yet, observability features are still to be added but it allows to present the working KubeVIP example.
-
-#### 6.1. Prerequisites
+### 6.1. Prerequisites
 - Docker installed and running
 - kind installed
 - kubectl installed
 - helm installed
 
-#### 6.2. Docker image building
-1. Build Docker image: `docker build -t echo-app ./app`
-2. Once your kind cluster is setup ([section 6.3](#6.3.-cluster-and-app-configuration)), load the image to the cluster: `kind load docker-image echo-app:latest`
+### 6.2. Docker image building
+1. Run script `docker_build.sh`, it will build docker image and load it into kind cluster - must be done after kind cluster creation!
 
-#### 6.3. Cluster and app configuration
+### 6.3. Cluster and KubeVIP configuration
 1. Create kind cluster using the config file: `kind create cluster --config=kind-config.yml`
-2. Find addresses that can be used by KubeVIP: `docker network inspect kind -f '{{ range $i, $a := .IPAM.Config }}{{ println .Subnet }}{{ end }}'`
-3. Deploy KubeVIP cloud controller to the cluster: `kubectl apply -f https://raw.githubusercontent.com/kube-vip/kube-vip-cloud-provider/main/manifest/kube-vip-cloud-controller.yaml`
-4. Create config map with the address range that you want KubeVIP to use (must be inside the range from point 2): `kubectl create configmap --namespace kube-system kubevip --from-literal range-global=<your_address_range>`
-5. Apply KubeVIP RBAC settings: `kubectl apply -f https://kube-vip.io/manifests/rbac.yaml`
-6. Deploy KubeVIP as DaemonSet to the worker nodes (using `kube-vip.yml` manifest file): `kubectl apply -f kube-vip.yml`
-7. Create testing deployment: `kubectl apply -f deployment.yml`
-8. Expose the deployment: `kubectl expose deployment echo-app-deployment --port=80 --type=LoadBalancer --name=echo-app`
-9.  Test the app by sending HTTP requests to the assigned VIP. (not completed yet)
+2. Build docker image and load it to the cluster: **Docker image building** section
+3. Find addresses that can be used by KubeVIP: `docker network inspect kind -f '{{ range $i, $a := .IPAM.Config }}{{ println .Subnet }}{{ end }}'`
+4. Deploy KubeVIP cloud controller to the cluster: `kubectl apply -f https://raw.githubusercontent.com/kube-vip/kube-vip-cloud-provider/main/manifest/kube-vip-cloud-controller.yaml`
+5. Create config map with the address range that you want KubeVIP to use (must be inside the range from point 3): `kubectl create configmap --namespace kube-system kubevip --from-literal range-global=<your_address_range>`
+6. Apply KubeVIP RBAC settings: `kubectl apply -f https://kube-vip.io/manifests/rbac.yaml`
+7. Deploy KubeVIP as DaemonSet to the worker nodes (using `kube-vip.yml` manifest file): `kubectl apply -f kube-vip.yml`
 
-#### 6.4. Observability deployment
+### 6.4. Cluster observability deployment
+1. Create namespace `observability`: `kubectl create namespace observability`
 1. Add Prometheus repo to helm: `helm repo add prometheus-community https://prometheus-community.github.io/helm-charts` and reload: `helm repo update`
-2. Deploy observability features to the cluster: `helm install kube-prometheus-stack --create-namespace --namespace monitoring -f values.yml prometheus-community/kube-prometheus-stack`
+2. Deploy observability features to the cluster: `helm install kube-prometheus-stack --namespace observability prometheus-community/kube-prometheus-stack`
+
+### 6.5. Telemetry setup
+The telemetry resources will be added to the `observability` namespace, the same as for kube-prometheus-stack.
+1. Install cert manager: `kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.17.2/cert-manager.yaml`
+2. Install Jaeger operator: `kubectl create -f https://github.com/jaegertracing/jaeger-operator/releases/download/v1.65.0/jaeger-operator.yaml -n observability`
+3. Install OpenTelemetry operator: `kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/latest/download/opentelemetry-operator.yaml`
+4. Deploy Jaeger, OpenTelemetry Collector and Instrumentation into the cluster: `observability_deploy.sh` script
 
 ## 7.How to reproduce - step by step
 <!---Infrastructure as Code approach--->
 
 ## 8. Demo deployment steps
 ### 8.1. Configuration set-up
+Configure the Kubernetes cluster and all observability features using the instructions from the point 6. OpenTelemetry configuration must be done prior to the application deployment for the auto-instrumentation to work.
+
+#### App deployment
+1. Create testing deployment: `kubectl apply -f deployment.yml`
+2. Expose the deployment: `kubectl expose deployment echo-app-deployment --port=80 --type=LoadBalancer --name=echo-app`
+
 ### 8.2. Data preparation
-### 8.3. Execution procedure
+### 8.3. Execution procedure and observability features access
+
+#### Accessing Grafana
+1. Port forwarding: `kubectl port-forward -n observability svc/kube-prometheus-stack-grafana 8080:80`
+2. Go to `localhost:8080`
+3. Login: `admin`, to get password: `kubectl --namespace monitoring get secrets kube-prometheus-stack-grafana -o jsonpath="{.data.admin-password}" | base64 -d ; echo`
+
+#### Accessing Jaeger
+1. Port forwarding: `kubectl port-forward svc/default-jaeger-query 16686:16686`
+2. Go to `localhost:16686`
+
+#### Simple app testing
+1. Find the IP address of `echo-app` service by running `kubectl get deployment echo-app` and copying `EXTERNAL-IP`
+2. Run `./app/test.sh http://<external_ip_of_app>/ip`
+
 ### 8.4. Results presentation
 
 ## 9. Using AI in the project

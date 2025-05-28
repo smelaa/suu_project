@@ -1,2 +1,4 @@
 fastapi
 uvicorn[standard]
+opentelemetry-distro
+opentelemetry-instrumentation-fastapi
