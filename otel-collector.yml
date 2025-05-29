@@ -2,6 +2,7 @@ apiVersion: opentelemetry.io/v1beta1
 kind: OpenTelemetryCollector
 metadata:
   name: default-otel
+  namespace: observability
 spec:
   config:
     receivers:
@@ -22,6 +23,9 @@ spec:
         endpoint: http://default-jaeger-collector:4317
         tls:
           insecure: true
+      prometheus:
+        endpoint: "0.0.0.0:8889"
+      debug: {}
     
     service:
       pipelines:
@@ -29,3 +33,7 @@ spec:
           receivers: [otlp]
           processors: [batch]
           exporters: [otlp/jaeger]
+        metrics:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [prometheus, debug]

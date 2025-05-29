@@ -27,11 +27,11 @@ Year: 2024/2025
   - [4. Solution architecture](#4-solution-architecture)
   - [5. Environment configuration description](#5-environment-configuration-description)
   - [6. Installation method](#6-installation-method)
-    - [6.1. Prerequisites](#prerequisites)
-    - [6.2. Docker image building](#docker-image-building)
-    - [6.3. Cluster and KubeVIP configuration](#cluster-and-kubevip-configuration)
-    - [6.4. Cluster observability deployment](#cluster-observability-deployment)
-    - [6.5. Telemetry setup](#telemetry-setup)
+    - [6.1. Prerequisites](#61-prerequisites)
+    - [6.2. Docker image building](#62-docker-image-building)
+    - [6.3. Cluster and KubeVIP configuration](#63-cluster-and-kubevip-configuration)
+    - [6.4. Cluster observability deployment](#64-cluster-observability-deployment)
+    - [6.5. Telemetry setup](#65-telemetry-setup)
   - [7.How to reproduce - step by step](#7how-to-reproduce---step-by-step)
   - [8. Demo deployment steps](#8-demo-deployment-steps)
     - [8.1. Configuration set-up](#81-configuration-set-up)
@@ -165,7 +165,7 @@ We've set up kind cluster with 3 worker nodes and 1 control plane node in order 
 ### 6.4. Cluster observability deployment
 1. Create namespace `observability`: `kubectl create namespace observability`
 1. Add Prometheus repo to helm: `helm repo add prometheus-community https://prometheus-community.github.io/helm-charts` and reload: `helm repo update`
-2. Deploy observability features to the cluster: `helm install kube-prometheus-stack --namespace observability prometheus-community/kube-prometheus-stack`
+2. Deploy observability features to the cluster: `helm install kube-prometheus-stack --namespace observability prometheus-community/kube-prometheus-stack -f prometheus-values.yml`
 
 ### 6.5. Telemetry setup
 The telemetry resources will be added to the `observability` namespace, the same as for kube-prometheus-stack.
@@ -192,9 +192,10 @@ Configure the Kubernetes cluster and all observability features using the instru
 1. Port forwarding: `kubectl port-forward -n observability svc/kube-prometheus-stack-grafana 8080:80`
 2. Go to `localhost:8080`
 3. Login: `admin`, to get password: `kubectl --namespace monitoring get secrets kube-prometheus-stack-grafana -o jsonpath="{.data.admin-password}" | base64 -d ; echo`
+4. Dashboard setup from JSON (`grafana/requests_dashboard.json`)
 
 #### Accessing Jaeger
-1. Port forwarding: `kubectl port-forward svc/default-jaeger-query 16686:16686`
+1. Port forwarding: `kubectl port-forward -n observability svc/default-jaeger-query 16686:16686`
 2. Go to `localhost:16686`
 
 #### Simple app testing
