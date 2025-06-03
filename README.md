@@ -316,10 +316,19 @@ To find external IP address and port of `echo-app`, run `kubectl get svc`.
 ### 7.4. Results presentation
 
 ## 8. Using AI in the project
+LLMs were a helpful tool during the project, especially when it came to making our documentation clearer and more precise. They made it easier to put complex ideas into words and improved the overall readability of our written work.
+
+LLMs also sometimes pointed us in the right direction during debugging, offering suggestions that helped us think through certain problems. However, because our project involved a very specific subject area, the most important resource for solving technical issues was still the official documentation of the tools we used. While AI was useful in supporting our work, it couldn’t replace the depth and accuracy of the primary sources we relied on.
 
 ## 9. Summary – conclusions
 
 ## 10. References
 
-[1]: [...](...)
-...
+[1]: [Kubernetes documentation](https://kubernetes.io/docs/home/)
+[2]: [Docker manuals](https://docs.docker.com/manuals/)
+[3]: [kube-vip documentation](https://kube-vip.io/docs/)
+[4]: [OpenTelemetry documentation](https://opentelemetry.io/docs/)
+[5]: [Grafana documentation](https://grafana.com/docs/grafana/latest/)
+[6]: [Prometheus documentation](https://prometheus.io/docs/introduction/overview/)
+[7]: [Kind documentation](https://kind.sigs.k8s.io/docs/user/quick-start/)
+[8]: [Helm documentation](https://helm.sh/docs/)
