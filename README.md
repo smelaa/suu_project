@@ -315,6 +315,60 @@ To find external IP address and port of `echo-app`, run `kubectl get svc`.
 
 ### 7.4. Results presentation
 
+KubeVIP was tested through three distinct testing scenarios: Round-Robin Load Balancing Across Pods, Unreachable Pod Handling, and Simulated Load Testing. For each scenario, we monitored key performance metrics such as requests per second and request handling time using Grafana dashboards to provide detailed insights into system behavior and reliability.
+
+#### 7.4.1  Round-Robin Load Balancing Across Pods results
+
+The script which runs a curel request for the exposed echo-app service every 0.2 seconds was run in inrer to check round-robin load balancing, aftre performing requests the script printed a ip address of the pod that was handling the request. The pod IP clearly changes between requests, indicating that the load is being distributed evenly across the pods.
+
+<img width="247" alt="image" src="https://github.com/user-attachments/assets/0e890f2f-bfcc-40de-8920-18a4b161ab09" />
+
+Using the Grafana dashboard, the request rate for each pod was monitored, confirming that requests were distributed evenly across all pods.
+
+![image](https://github.com/user-attachments/assets/a61967fa-d60e-48db-adbf-eee4c4f64a6e)
+
+#### 7.4.2. Unreachable Pod Handling
+
+In this scenario, the script from the previous test was used again; however, during execution, one of the pods was stopped to simulate unreachable pod handling. The Grafana dashboard clearly shows a drop in requests for the stopped pod.
+
+![image](https://github.com/user-attachments/assets/b9243a28-6d9e-4453-bf5f-d7274f42ec1d)
+
+#### 7.4.3 Simulated Load Testing
+
+The load was simulated using the Apache Benchmark tool, which performed 10,000 requests with 10 concurrent requests at a time, using the following command:
+
+```
+ab -n 10000 -c 10 http://localhost:8081/ip
+```
+
+The Grafana dashboard displaying the request rate for each pod shows that, under this simulated load, requests were evenly distributed across the pods at a significantly higher rate compared to the basic script used in the previous testing scenario.
+
+![image](https://github.com/user-attachments/assets/84eaf240-5835-47ed-a508-2519e726be10)
+
+#### 7.4.4 Other monitored metrics and traces using grafana dashboard and Jaeger
+
+Using Jaeger, we were able to monitor request traces, which allowed us to inspect how individual requests were handled by the echo-app:
+
+![image](https://github.com/user-attachments/assets/8eb7d01f-ee8e-4272-b327-d9368fe0ce6d)
+
+
+In addition to request rates, the Grafana dashboard also enabled monitoring of custom metrics, such as request handling time:
+
+![image](https://github.com/user-attachments/assets/cb83c8bd-faa8-4c3c-8d99-d751c55bd646)
+
+
+Grafana further provides visibility into system-level metrics, including current rates of bytes received and transmitted, bandwidth usage, memory consumption and CPU usage, and more:
+
+![image](https://github.com/user-attachments/assets/05544fd3-0d6b-4a62-9637-393a9b2e8d72)
+
+![image](https://github.com/user-attachments/assets/fa0db7c7-a3fa-4016-ae29-762cf7dc93b1)
+
+![image](https://github.com/user-attachments/assets/4e7615c0-237e-4b45-8777-e421e0982626)
+
+![image](https://github.com/user-attachments/assets/06fcc8c5-2031-4304-8a94-928a2b4d4261)
+
+
+
 ## 8. Using AI in the project
 LLMs were a helpful tool during the project, especially when it came to making our documentation clearer and more precise. They made it easier to put complex ideas into words and improved the overall readability of our written work.
 
