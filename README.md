@@ -32,19 +32,18 @@ Year: 2024/2025
     - [6.3. Cluster and KubeVIP configuration](#63-cluster-and-kubevip-configuration)
     - [6.4. Cluster observability deployment](#64-cluster-observability-deployment)
     - [6.5. Telemetry setup](#65-telemetry-setup)
-  - [7.How to reproduce - step by step](#7how-to-reproduce---step-by-step)
-  - [8. Demo deployment steps](#8-demo-deployment-steps)
-    - [8.1. Configuration set-up](#81-configuration-set-up)
+  - [7. Demo deployment steps](#7-demo-deployment-steps)
+    - [7.1. Configuration set-up](#71-configuration-set-up)
       - [App deployment](#app-deployment)
-    - [8.2. Data preparation](#82-data-preparation)
-    - [8.3. Execution procedure and observability features access](#83-execution-procedure-and-observability-features-access)
+    - [7.2. Data preparation](#72-data-preparation)
+    - [7.3. Execution procedure and observability features access](#73-execution-procedure-and-observability-features-access)
       - [Accessing Grafana](#accessing-grafana)
       - [Accessing Jaeger](#accessing-jaeger)
       - [Simple app testing](#simple-app-testing)
-    - [8.4. Results presentation](#84-results-presentation)
-  - [9. Using AI in the project](#9-using-ai-in-the-project)
-  - [10. Summary – conclusions](#10-summary--conclusions)
-  - [11. References](#11-references)
+    - [7.4. Results presentation](#74-results-presentation)
+  - [8. Using AI in the project](#9-using-ai-in-the-project)
+  - [9. Summary – conclusions](#10-summary--conclusions)
+  - [10. References](#11-references)
 
 ## 1. Introduction
 KubeVIP is a cloud-native high availability and load balancing solution built for Kubernetes environments, designed to provide resilient virtual IP addressing for both control plane components and service workloads across on-premises, edge, and multi-cloud deployments. By focusing on simplicity and platform independence, KubeVIP eliminates the need for external load balancers while ensuring critical Kubernetes components remain accessible even during node failures. It encompasses both control plane high availability and service load balancing capabilities, enabling organizations to build robust Kubernetes infrastructures without cloud provider dependencies. KubeVIP is platform-agnostic, operating effectively across bare metal, virtual machines, and various cloud environments. Its Kubernetes-native approach leverages either static pods or DaemonSets with support for multiple VIP advertisement methods including ARP, BGP, and Layer 2, enabling flexible network integration. KubeVIP aims to democratize high availability for Kubernetes clusters of all sizes, reducing operational complexity and costs associated with traditional load balancing solutions, ultimately enhancing resilience in both production and edge deployments.
@@ -136,11 +135,11 @@ To ensure the Kubernetes cluster's performance, reliability, and health, monitor
 
 ## 4. Solution architecture
 
-To setup Kubernetes cluster locally we've used kind - Kubernetes in Docker, which allowed us to easily setup multi-node cluster with Docker containers acting as nodes. KubeVIP has been used with a service of type LoadBalancer to balance the traffic between multiple pods with an application running inside and exposing simple HTTP endpoint. Monitoring and observability has been achieved with the use of OpenTelemetry (metrics and traces from the application), Prometheus and Grafana for visualization.
+To setup Kubernetes cluster locally we used kind - Kubernetes in Docker, which allowed us to easily setup multi-node cluster with Docker containers acting as nodes. KubeVIP has been used with a service of type LoadBalancer to balance the traffic between multiple pods with an application running inside and exposing simple HTTP endpoint. Monitoring and observability has been achieved with the use of OpenTelemetry (metrics and traces from the application), Prometheus and Grafana for visualization.
 
 ## 5. Environment configuration description
 
-We've set up kind cluster with 3 worker nodes and 1 control plane node in order to show KubeVIP's capability to balance the traffic between pods located on separate nodes. KubeVIP has been deployed in ARP mode as a DaemonSet on all worker nodes, the application has been packed into the Docker image and deployed to the cluster in 3 replicas (`deployment.yml` manifest file). After exposing the deployment as a service of type LoadBalancer, KubeVIP took care of assigning virtual IP and handling load balancing between the replicas.
+We set up kind cluster with 3 worker nodes and 1 control plane node in order to show KubeVIP's capability to balance the traffic between pods located on separate nodes. KubeVIP has been deployed in ARP mode as a DaemonSet on all worker nodes, the application has been packed into the Docker image and deployed to the cluster in 3 replicas (`deployment.yml` manifest file). After exposing the deployment as a service of type LoadBalancer, KubeVIP took care of assigning virtual IP and handling load balancing between the replicas.
 
 ## 6. Installation method
 
@@ -155,17 +154,105 @@ We've set up kind cluster with 3 worker nodes and 1 control plane node in order 
 
 ### 6.3. Cluster and KubeVIP configuration
 1. Create kind cluster using the config file: `kind create cluster --config=kind-config.yml`
+
+*kind-config.yml*:
+```
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+- role: control-plane
+- role: worker
+- role: worker
+- role: worker
+```
 2. Build docker image and load it to the cluster: **Docker image building** section
 3. Find addresses that can be used by KubeVIP: `docker network inspect kind -f '{{ range $i, $a := .IPAM.Config }}{{ println .Subnet }}{{ end }}'`
 4. Deploy KubeVIP cloud controller to the cluster: `kubectl apply -f https://raw.githubusercontent.com/kube-vip/kube-vip-cloud-provider/main/manifest/kube-vip-cloud-controller.yaml`
-5. Create config map with the address range that you want KubeVIP to use (must be inside the range from point 3): `kubectl create configmap --namespace kube-system kubevip --from-literal range-global=<your_address_range>`
+5. Create config map with the address range that you want KubeVIP to use (must be inside the range from point 3): `kubectl create configmap --namespace kube-system kubevip --from-literal range-global=<your_address_range>` 
+Note: Make sure to exclude Gateway IP from your address range. It is usually the first address from the range received in point 3.
 6. Apply KubeVIP RBAC settings: `kubectl apply -f https://kube-vip.io/manifests/rbac.yaml`
 7. Deploy KubeVIP as DaemonSet to the worker nodes (using `kube-vip.yml` manifest file): `kubectl apply -f kube-vip.yml`
+
+
+*kube-vip.yml*:
+```
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  creationTimestamp: null
+  labels:
+    app.kubernetes.io/name: kube-vip-ds
+    app.kubernetes.io/version: v0.9.1
+  name: kube-vip-ds
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kube-vip-ds
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app.kubernetes.io/name: kube-vip-ds
+        app.kubernetes.io/version: v0.9.1
+    spec:
+      containers:
+      - args:
+        - manager
+        env:
+        - name: vip_arp
+          value: "true"
+        - name: port
+          value: "6443"
+        - name: vip_nodename
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: vip_interface
+          value: eth0
+        - name: dns_mode
+          value: first
+        - name: svc_enable
+          value: "true"
+        - name: svc_leasename
+          value: plndr-svcs-lock
+        - name: vip_address
+        - name: prometheus_server
+          value: :2112
+        - name: svc_election
+          value: "true"
+        image: ghcr.io/kube-vip/kube-vip:v0.9.1
+        imagePullPolicy: IfNotPresent
+        name: kube-vip
+        resources: {}
+        securityContext:
+          capabilities:
+            add:
+            - NET_ADMIN
+            - NET_RAW
+            drop:
+            - ALL
+      hostNetwork: true
+      serviceAccountName: kube-vip
+  updateStrategy: {}
+```
 
 ### 6.4. Cluster observability deployment
 1. Create namespace `observability`: `kubectl create namespace observability`
 1. Add Prometheus repo to helm: `helm repo add prometheus-community https://prometheus-community.github.io/helm-charts` and reload: `helm repo update`
 2. Deploy observability features to the cluster: `helm install kube-prometheus-stack --namespace observability prometheus-community/kube-prometheus-stack -f prometheus-values.yml`
+
+*prometheus-values.yml*:
+```
+prometheus:
+  prometheusSpec:
+    additionalScrapeConfigs:
+      - job_name: 'otel-collector'
+        scrape_interval: 10s
+        static_configs:
+          - targets: ['default-otel-collector:8889']
+
+```
 
 ### 6.5. Telemetry setup
 The telemetry resources will be added to the `observability` namespace, the same as for kube-prometheus-stack.
@@ -174,19 +261,43 @@ The telemetry resources will be added to the `observability` namespace, the same
 3. Install OpenTelemetry operator: `kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/latest/download/opentelemetry-operator.yaml`
 4. Deploy Jaeger, OpenTelemetry Collector and Instrumentation into the cluster: `observability_deploy.sh` script
 
-## 7.How to reproduce - step by step
-<!---Infrastructure as Code approach--->
-
-## 8. Demo deployment steps
-### 8.1. Configuration set-up
+## 7. Demo deployment steps
+### 7.1. Configuration set-up
 Configure the Kubernetes cluster and all observability features using the instructions from the point 6. OpenTelemetry configuration must be done prior to the application deployment for the auto-instrumentation to work.
 
 #### App deployment
 1. Create testing deployment: `kubectl apply -f deployment.yml`
-2. Expose the deployment: `kubectl expose deployment echo-app-deployment --port=80 --type=LoadBalancer --name=echo-app`
 
-### 8.2. Data preparation
-### 8.3. Execution procedure and observability features access
+*deployment.yml*
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: echo-app-deployment
+spec:
+  selector:
+    matchLabels:
+      app: echo-app
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: echo-app
+      annotations:
+        instrumentation.opentelemetry.io/inject-python: "true"
+    spec:
+      containers:
+      - name: echo-app
+        image: echo-app:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 80
+```
+2. Expose the deployment: `kubectl expose deployment echo-app-deployment --port=80 --type=LoadBalancer --name=echo-app`
+3. Additionaly if you use Docker Desktop, set reverse proxy `docker run -d --network kind -p 8081:80 alpine/socat \CP-LISTEN:80,fork,reuseaddr TCP:<external_ip_of_app_with_port>` 
+To find external IP address and port of `echo-app`, run `kubectl get svc`.
+
+### 7.2. Execution procedure and observability features access
 
 #### Accessing Grafana
 1. Port forwarding: `kubectl port-forward -n observability svc/kube-prometheus-stack-grafana 8080:80`
@@ -202,13 +313,22 @@ Configure the Kubernetes cluster and all observability features using the instru
 1. Find the IP address of `echo-app` service by running `kubectl get deployment echo-app` and copying `EXTERNAL-IP`
 2. Run `./app/test.sh http://<external_ip_of_app>/ip`
 
-### 8.4. Results presentation
+### 7.4. Results presentation
 
-## 9. Using AI in the project
+## 8. Using AI in the project
+LLMs were a helpful tool during the project, especially when it came to making our documentation clearer and more precise. They made it easier to put complex ideas into words and improved the overall readability of our written work.
 
-## 10. Summary – conclusions
+LLMs also sometimes pointed us in the right direction during debugging, offering suggestions that helped us think through certain problems. However, because our project involved a very specific subject area, the most important resource for solving technical issues was still the official documentation of the tools we used. While AI was useful in supporting our work, it couldn’t replace the depth and accuracy of the primary sources we relied on.
 
-## 11. References
+## 9. Summary – conclusions
 
-[1]: [...](...)
-...
+## 10. References
+
+[1]: [Kubernetes documentation](https://kubernetes.io/docs/home/)
+[2]: [Docker manuals](https://docs.docker.com/manuals/)
+[3]: [kube-vip documentation](https://kube-vip.io/docs/)
+[4]: [OpenTelemetry documentation](https://opentelemetry.io/docs/)
+[5]: [Grafana documentation](https://grafana.com/docs/grafana/latest/)
+[6]: [Prometheus documentation](https://prometheus.io/docs/introduction/overview/)
+[7]: [Kind documentation](https://kind.sigs.k8s.io/docs/user/quick-start/)
+[8]: [Helm documentation](https://helm.sh/docs/)
