@@ -109,7 +109,7 @@ The application consists of three identical microservices, each deployed as a si
 
 KubeVIP is deployed in DaemonSet mode allowing service load balancing. It advertises a virtual IP (VIP) on the local network, acting as a stable, external-facing IP address for the service. Traffic directed to this VIP is automatically distributed across the three microservice Pods, demonstrating basic layer 4 load balancing functionality.
 
-![Case Study new drawio](https://github.com/user-attachments/assets/ff5a2ae2-b578-4b98-9689-94693d5146fc)
+![image](https://github.com/user-attachments/assets/28067167-492b-48fb-b79c-ad64a20e27e6)
 
 
 This setup replicates a LoadBalancer-type service typically found in managed Kubernetes environments, without relying on external hardware or cloud infrastructure. It highlights KubeVIP's utility in on-premises or edge deployments, providing a practical and minimal solution for high availability, traffic distribution, and network resilience in small to medium-scale Kubernetes clusters
