@@ -137,6 +137,22 @@ To ensure the Kubernetes cluster's performance, reliability, and health, monitor
 
 To setup Kubernetes cluster locally we used kind - Kubernetes in Docker, which allowed us to easily setup multi-node cluster with Docker containers acting as nodes. KubeVIP has been used with a service of type LoadBalancer to balance the traffic between multiple pods with an application running inside and exposing simple HTTP endpoint. Monitoring and observability has been achieved with the use of OpenTelemetry (metrics and traces from the application), Prometheus and Grafana for visualization.
 
+![Screenshot from 2025-06-03 19-37-00](https://github.com/user-attachments/assets/ad1e5968-06ba-4568-a676-1b93380b820f)
+
+The low-level, in-depth diagram of our solution architecture shows how KubeVIP actually works:
+1. One of the nodes in the cluster is assigned a virtual IP by KubeVIP - it is a leader that receives requests from outside of the cluster
+2. The leader node decides (using KubeVIP) where to send the request and performs load balancing
+
+It is clearly visible that the load balancing task, that is normally performed using some external resources (e.g. ALB on AWS), in this situation is perfomed entirely inside the cluster, using only KubeVIP.
+
+![Screenshot from 2025-06-03 23-55-24](https://github.com/user-attachments/assets/b0c60e24-4bf7-45a2-a786-ebf84fcf75c9)
+
+The above diagram shows how the observabililty of our application is modeled:
+1. Appliation sends traces and metrics to the OTEL Collector
+2. OTEL collector sends traces to Jaeger Operator, they are queries using Jaeger Query
+3. Prometheus scrapes metrics from the OTEL Collector once every 10 seconds
+4. Grafana queries metrics from Prometheus and displays them on graphs (not only metrics from the application but also the ones from cluster monitoring handled by the kube-prometheus-stack)
+
 ## 5. Environment configuration description
 
 We set up kind cluster with 3 worker nodes and 1 control plane node in order to show KubeVIP's capability to balance the traffic between pods located on separate nodes. KubeVIP has been deployed in ARP mode as a DaemonSet on all worker nodes, the application has been packed into the Docker image and deployed to the cluster in 3 replicas (`deployment.yml` manifest file). After exposing the deployment as a service of type LoadBalancer, KubeVIP took care of assigning virtual IP and handling load balancing between the replicas.
@@ -376,13 +392,21 @@ LLMs also sometimes pointed us in the right direction during debugging, offering
 
 ## 9. Summary – conclusions
 
+The project demostrated the capability of KubeVIP to create and handle service of type LoadBalancer in Kubernetes cluster. We've had a chance to observe how easy and quick it is to install and deploy KubeVIP on cluster's worker nodes and have external IP automatically assigned to the deployment in our local cluster, without the usage of any external resources. Demonstrating the load balancing in practice using a simple echo application and the observability stack (OTEL, Jaeger, Prometheus, Grafana) gave us a valuable insight into how such features are set up.
+
+By using the OTEL Operator, Jeager Operator and OTEL auto-instrumentation injection we've managed to start collecting traces from our application without making any code changes. It clearly shows how powerful this OpenTelemetry feature is and how significantly it can improve the application's observability without too much operational overhead. Moreover, kube-prometheus-stack installed using the helm package manager for k8s allowed us to set up the observability (plenty of metrics, e.g. CPU usage, memory, networking, control-plane-related metrics) of the entire cluster with Grafana visualization using just one command.
+
+We've managed to utilize the OpenTelemetry for one more purpose: collecting custom metrics from our application. The OTEL Collector and OTEL SDK for Python made it very easy to setup requests-related metrics (count and time), send them to the OTEL Collector, scrape using Prometheus from helm stack and visualize on Grafana dashboard. These metrics together with the CPU usage and networking metrics from the cluster monitoring allowed us to demonstrate how the KubeVIP load balancing works and how it behaves under heavy load from the Apache Benchmark.
+
 ## 10. References
 
 [1]: [Kubernetes documentation](https://kubernetes.io/docs/home/)
 [2]: [Docker manuals](https://docs.docker.com/manuals/)
 [3]: [kube-vip documentation](https://kube-vip.io/docs/)
 [4]: [OpenTelemetry documentation](https://opentelemetry.io/docs/)
-[5]: [Grafana documentation](https://grafana.com/docs/grafana/latest/)
-[6]: [Prometheus documentation](https://prometheus.io/docs/introduction/overview/)
-[7]: [Kind documentation](https://kind.sigs.k8s.io/docs/user/quick-start/)
-[8]: [Helm documentation](https://helm.sh/docs/)
+[5]: [OpenTelemetry Operator](https://opentelemetry.io/docs/platforms/kubernetes/operator/)
+[6]: [OpenTelemetry Auto-instrumentation](https://opentelemetry.io/docs/platforms/kubernetes/operator/automatic/)
+[7]: [Grafana documentation](https://grafana.com/docs/grafana/latest/)
+[8]: [Prometheus documentation](https://prometheus.io/docs/introduction/overview/)
+[9]: [Kind documentation](https://kind.sigs.k8s.io/docs/user/quick-start/)
+[10]: [Helm documentation](https://helm.sh/docs/)
